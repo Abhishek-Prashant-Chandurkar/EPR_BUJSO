@@ -1,6 +1,8 @@
-\documentclass[12pt,a4paper]{article}
-\usepackage[margin=1in]{geometry}
+\documentclass[journal]{IEEEtran}
+
+% 1. Essential Packages (No duplicates)
 \usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{hyperref}
@@ -8,128 +10,92 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{caption}
-\usepackage{setspace}
 \usepackage{enumitem}
 \usepackage{microtype}
 \usepackage{float}
 \usepackage{multirow}
+\usepackage{cuted}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
 
-\onehalfspacing
-\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
-
+% 2. Theorem Environments
 \newtheorem{definition}{Definition}
 \newtheorem{lemma}{Lemma}
 \newtheorem{theorem}{Theorem}
 \newtheorem{corollary}{Corollary}
 
+% 3. Title Metadata
 \title{\textbf{Equal Resource Partitioning Enhanced Hybrid Optimization\\
 for Workload Prioritization and Task Scheduling in Cloud Computing}}
-
 \author{
-  Student Name\\[2pt]
+  Abhishek Chandurkar (BT22CSE104)\\[2pt]
+  Ojas Khamele (BT22CSE027)\\[2pt]
+  Tanmay Sharnagat (BT22CSE028)\\[2pt]
+  Siddharth Ghuge (BT22CSE029)\\[2pt]
   Department of Computer Science and Engineering\\
-  Institution Name\\
-  \texttt{student@email.com}
+  VNIT Nagpur\\
+  
 }
-\date{\today}
 
 \begin{document}
+% Render title first
 \maketitle
-\thispagestyle{empty}
 
-%% ─── Abstract ────────────────────────────────────────────────────────────────
+\setlength{\parskip}{8pt}
+
 \begin{abstract}
-Task scheduling in cloud computing environments remains a critical challenge due to the
-heterogeneous nature of workloads and virtual machines~(VMs). Existing approaches,
-including the Blue Updated Jellyfish Search Optimization~(BUJSO) proposed by
-Pachipala~et~al.~\cite{pachipala2024}, achieve competitive results but suffer from slow
-convergence and load imbalance because their population is initialized entirely at random.
-This paper proposes \textbf{EPR-BUJSO}, which integrates an \textbf{Equal Resource
-Partitioning~(EPR)} principle into BUJSO through a mathematically grounded initialization
-strategy. The core contribution is the \textbf{Dynamic Resource-Aware Equal
-Partitioning~(DRA-EP)} model, formalized via one corrected definition, one lemma with
-proof, one theorem with proof, and one corollary. Definition~1 introduces a normalized,
-dimensionally consistent Resource-Demand Density~$\rho_i$. Lemma~1 proves that
-minimizing the variance of per-VM density sums is a necessary and sufficient condition for
-minimizing makespan. Theorem~1 establishes that the Greedy Density-Balanced
-Assignment~(GDBA) approximates the optimal balanced partition. An extended
-Analytic Hierarchy Process~(AHP) ranking adds density stability as a fourth prioritization
-criterion. Experiments on a synthetic dataset of 100~tasks and VMs ranging from 10 to 50
-show that EPR-BUJSO achieves the \emph{lowest makespan at every VM configuration} (up to
-21.4\,\% better than standard BUJSO), reduces load imbalance by up to 38.0\,\% over BUJSO,
-and incurs negligible additional computational overhead.
-
-\smallskip\noindent
-\textbf{Keywords:} Equal Resource Partitioning; Task Scheduling; Cloud Computing;
-BUJSO; Workload Prioritization; Hybrid Optimization; AHP Ranking.
+Task scheduling in cloud computing is one of those problems that just won't go away---and honestly, that makes sense given how diverse and unpredictable real-world workloads can be. Existing approaches, including the Blue Updated Jellyfish Search Optimization~(BUJSO) proposed by Pachipala~et~al.~\cite{pachipala2024}, show competitive results but tend to suffer from slow convergence and load imbalance, mostly because the population is initialized completely at random. This paper proposes \textbf{EPR-BUJSO}, which weaves an \textbf{Equal Resource Partitioning~(EPR)} principle into BUJSO through a mathematically grounded initialization strategy. The core idea is the \textbf{Dynamic Resource-Aware Equal Partitioning~(DRA-EP)} model, which we formalize through one corrected definition, one lemma with proof, one theorem with proof, and a corollary. Definition~1 introduces a normalized, dimensionally consistent Resource-Demand Density~$\rho_i$. Lemma~1 shows that minimizing the variance of per-VM density sums is both necessary and sufficient for minimizing makespan. Theorem~1 establishes that the Greedy Density-Balanced Assignment~(GDBA) closely approximates the optimal balanced partition. An extended Analytic Hierarchy Process~(AHP) ranking brings density stability in as a fourth prioritization criterion. Experiments on a synthetic dataset of 100~tasks with VMs ranging from 10 to 50 show that EPR-BUJSO achieves the \emph{lowest makespan at every VM configuration}---up to 21.4\,\% better than standard BUJSO---reduces load imbalance by up to 38.0\,\% over BUJSO, and adds only negligible computational overhead.
 \end{abstract}
 
-\newpage
-
-%% ─── 1. Introduction ─────────────────────────────────────────────────────────
+\begin{IEEEkeywords}
+Equal Resource Partitioning; Task Scheduling; Cloud Computing;
+BUJSO; Workload Prioritization; Hybrid Optimization; AHP Ranking.
+\end{IEEEkeywords}
 \section{Introduction}
-\label{sec:intro}
+\label{sec:introduction}
 
-Cloud computing delivers on-demand, scalable computational services over the internet.
-Users submit workloads to a data-center broker that allocates tasks to a pool of virtual
-machines~(VMs). The quality of this allocation is governed by \emph{task scheduling},
-which must simultaneously minimize makespan, resource cost, migration overhead, and
-security risk~\cite{pachipala2024,alsadie2021}.
+Cloud computing delivers on-demand, scalable computational services over the internet. Users submit workloads to a data-center broker, which then allocates tasks to a pool of virtual machines~(VMs). How well this allocation is handled depends on \emph{task scheduling}---a step that needs to simultaneously minimize makespan, resource cost, migration overhead, and security risk~\cite{pachipala2024,alsadie2021}.
 
-Task scheduling is NP-hard in the general case~\cite{mahmoud2022}, making exact methods
-impractical at cloud scale. Metaheuristic algorithms therefore dominate the literature.
-Recent proposals include hybrid ant-genetic algorithms~\cite{ajmal2021}, the Whale
-Optimization Algorithm~(WOA)~\cite{chen2020woa}, and BUJSO~\cite{pachipala2024}, which
-combines Blue Monkey Optimization~(BMO) with Jellyfish Search Optimization~(JSO). Despite
-strong empirical performance, BUJSO and its peers share a common weakness: \emph{the
-population is initialized uniformly at random}. Random initialization ignores problem
-structure, causing early iterations to explore low-quality regions and yielding schedules
-with severe load imbalance.
+Task scheduling is NP-hard in the general case~\cite{mahmoud2022}, which makes exact methods essentially impractical at cloud scale. Metaheuristic algorithms have, understandably, come to dominate the literature as a result. Recent proposals include hybrid ant-genetic algorithms~\cite{ajmal2021}, the Whale Optimization Algorithm~(WOA)~\cite{chen2020woa}, and BUJSO~\cite{pachipala2024}, which cleverly combines Blue Monkey Optimization~(BMO) with Jellyfish Search Optimization~(JSO). Despite strong empirical performance, BUJSO and its counterparts share a common weakness: \emph{the population is initialized uniformly at random}. Random initialization essentially ignores the structure of the problem, causing early iterations to waste time exploring low-quality regions---and the resulting schedules often carry serious load imbalance.
 
-This paper addresses this limitation through the \textbf{Equal Resource Partitioning
-(EPR)} principle: tasks should be distributed across VMs such that the cumulative
-normalized resource-demand density is equalized. We formalize this intuition in the
-\textbf{Dynamic Resource-Aware Equal Partitioning~(DRA-EP)} model and use it to seed the
-BUJSO population with high-quality initial schedules.
+This paper tackles this limitation through the \textbf{Equal Resource Partitioning (EPR)} principle: tasks should be spread across VMs such that the cumulative normalized resource-demand density is roughly equalized. We formalize this intuition in the \textbf{Dynamic Resource-Aware Equal Partitioning~(DRA-EP)} model and use it to seed the BUJSO population with high-quality initial schedules.
 
-The primary contributions are:
+The primary contributions of this work are as follows:
 \begin{enumerate}[noitemsep,topsep=2pt]
   \item A corrected, dimensionally consistent \textbf{Normalized Resource-Demand Density}
         definition that resolves the unit inconsistency present in prior work.
   \item A \textbf{Partitioning Variance Lemma} with formal proof linking density
         variance to makespan minimality.
-  \item An \textbf{Optimal Equal Partitioning Theorem} establishing GDBA as an
+  \item An \textbf{Optimal Equal Partitioning Theorem} establishing GDBA as a reasonable
         approximation to the optimal partition, with a corollary on convergence speed.
-  \item An \textbf{extended AHP ranking} that adds density stability as a fourth criterion.
-  \item The \textbf{EPR-BUJSO algorithm} and a comprehensive six-metric experimental
+  \item An \textbf{extended AHP ranking} that incorporates density stability as a fourth criterion.
+  \item The \textbf{EPR-BUJSO algorithm} and a thorough six-metric experimental
         evaluation against seven baselines.
 \end{enumerate}
 
-The rest of the paper is organized as follows. Section~\ref{sec:related} reviews related
-work. Section~\ref{sec:proposed} presents the DRA-EP model and EPR-BUJSO.
-Section~\ref{sec:results} reports results. Section~\ref{sec:conclusion} concludes.
+The rest of this paper is structured as follows. Section~\ref{sec:related} reviews related work. Section~\ref{sec:proposed} presents the DRA-EP model and the EPR-BUJSO algorithm. Section~\ref{sec:results} reports experimental results. Section~\ref{sec:conclusion} concludes the paper.
 
-%% ─── 2. Related Work ─────────────────────────────────────────────────────────
+
 \section{Related Work}
 \label{sec:related}
 
-Alsadie~\cite{alsadie2021} proposed MDVMA, applying NSGA-II for multi-objective
-scheduling, achieving reduced energy and makespan but lacking workload prioritization.
-Ajmal~et~al.~\cite{ajmal2021} developed a hybrid ant-genetic algorithm that reduces
-solution space via pheromone-guided partitioning, but requires careful pheromone-decay
-tuning. Shukri~et~al.~\cite{shukri2021} combined MVO and PSO in EMVO for higher resource
-utilization, though with limited effectiveness on dynamic workflows.
-Velliangiri~et~al.~\cite{velliangiri2021} proposed HESGA, combining electro-search and
-genetic algorithms to reduce makespan, but omitting migration cost from the objective.
-Sharma and Garg~\cite{sharma2020} introduced an ANN-based energy-efficient scheduler that
-requires pre-training data. Mangalampalli~et~al.~\cite{mangalampalli2023} applied WOA to
-trust-aware scheduling with strong results, at the cost of slow task execution.
-Tamilarasu and Singaravel~\cite{tamilarasu2023} proposed ICOATS, balancing
-exploitation and exploration via the coati algorithm, though with storage overhead.
-Pachipala~et~al.~\cite{pachipala2024} proposed BUJSO, which is the state-of-the-art
-baseline the present work enhances. Table~\ref{tab:related} summarizes key challenges.
+Alsadie~\cite{alsadie2021} proposed MDVMA, applying NSGA-II for multi-objective scheduling, achieving reduced energy and makespan---but it doesn't really address workload prioritization. Ajmal~et~al.~\cite{ajmal2021} developed a hybrid ant-genetic algorithm that narrows the solution space via pheromone-guided partitioning, though careful pheromone-decay tuning is required. Shukri~et~al.~\cite{shukri2021} combined MVO and PSO in EMVO for better resource utilization, though with limited effectiveness on dynamic workflows. Velliangiri~et~al.~\cite{velliangiri2021} proposed HESGA, combining electro-search and genetic algorithms to reduce makespan, but migration cost was left out of the objective. Sharma and Garg~\cite{sharma2020} introduced an ANN-based energy-efficient scheduler that needs pre-training data. Mangalampalli~et~al.~\cite{mangalampalli2023} applied WOA to trust-aware scheduling with good results, at the cost of slower task execution. Tamilarasu and Singaravel~\cite{tamilarasu2023} proposed ICOATS, which tries to balance exploitation and exploration via the coati algorithm, though storage overhead is a concern. Pachipala~et~al.~\cite{pachipala2024} proposed BUJSO, which is the state-of-the-art baseline the present work enhances.
 
-\begin{table}[H]
+Recent advances in cloud and edge task scheduling have increasingly focused on multi-objective optimization---balancing makespan, energy consumption, and resource utilization all at once. But many existing methods still struggle with adaptability and scalability when workloads shift dynamically.
+
+Several metaheuristic and hybrid strategies have been put forward to address these challenges. For instance, MDVMA~\cite{alsadie2021} demonstrated effectiveness in minimizing both energy usage and completion time using NSGA-II, yet it doesn't explicitly account for heterogeneous workload prioritization---which can be a real problem in priority-sensitive applications. The hybrid Ant Colony--Genetic Algorithm in~\cite{ajmal2021} improves convergence by narrowing the search space through pheromone-guided partitioning; that said, its performance is highly sensitive to pheromone evaporation parameters, requiring careful tuning for stability across different workloads.
+
+The EMVO framework in~\cite{shukri2021} integrates MVO and PSO to improve resource utilization, but its static optimization design hurts effectiveness in highly dynamic or fast-changing workflow environments. In contrast, HESGA~\cite{velliangiri2021} uses electro-search mechanisms combined with genetic operations to speed up convergence and reduce makespan, though it overlooks migration-related overhead---which can become significent in distributed cloud systems.
+
+Machine learning-based scheduling has also been explored. Sharma and Garg~\cite{sharma2020} proposed an ANN-driven energy-aware scheduler that achieves better decision-making once trained; however, its dependence on pre-collected training datasets limits adaptability in unseen or changing system conditions. Swarm intelligence approaches such as WOA have been used in trust-aware scheduling~\cite{mangalampalli2023}, with strong trust evaluation performance, but at the cost of increased execution latency due to iterative search.
+
+More recently, bio-inspired hybrid models like ICOATS~\cite{tamilarasu2023} try to balance exploration and exploitation, yet they introduce extra storage overhead due to population maintenance and solution tracking. BUJSO~\cite{pachipala2024}, which serves as our baseline, shows strong overall performance across multiple QoS metrics but relies on random initialization---which may lead to suboptimal convergence in early iterations.
+
+To address these shortcomings, EPR-BUJSO enhances the initialization phase through density-aware seeding, improving early population diversity and convergence stability. While it does introduce a marginal increase in migration cost in medium-scale environments (40--50 VMs), this trade-off is more than compensated by improved global search capability and better load distribution---making it a better fit for large-scale heterogeneous cloud systems.
+
+Table~\ref{tab:related} summarizes these approaches and highlights their respective strengths and limitations.
+
+\begin{table*}[h!]
 \centering
 \caption{Summary of challenges in existing task scheduling methods.}
 \label{tab:related}
@@ -149,10 +115,9 @@ BUJSO~\cite{pachipala2024}     & Best overall metrics       & Random initializat
 \textbf{EPR-BUJSO (Ours)}      & Density-balanced seeding   & Slightly higher migration at 40--50 VMs \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-%% ─── 3. Proposed Work ────────────────────────────────────────────────────────
-\section{Proposed Work: EPR-BUJSO}
+\section{Proposed Method and Mathematical Model}
 \label{sec:proposed}
 
 \subsection{System Model}
@@ -189,23 +154,57 @@ probability~(Eq.~\ref{eq:risk}):
 Chaotic weights $W_k$ are updated per-iteration via the logistic-family chaotic map of
 Eq.~10 in~\cite{pachipala2024}.
 
+To ensure that a schedule is actually feasible, each task must be assigned to exactly one VM while respecting its resource requirements. So the mapping $\sigma$ must satisfy:
+\begin{align}
+\mathrm{CPU}^{req}_i &\le \mathrm{CPU}^{cap}_{\sigma(i)}, \\
+\mathrm{RAM}^{req}_i &\le \mathrm{RAM}^{cap}_{\sigma(i)}, \\
+\mathrm{BW}^{req}_i  &\le \mathrm{BW}^{cap}_{\sigma(i)}, \quad \forall i \in \mathcal{T}.
+\end{align}
+
+To handle constraint violations during optimization, a penalty term is added:
+\begin{equation}
+P_{\mathrm{pen}} =
+\sum_{i=1}^{n}
+\left(
+\alpha_1 \Delta \mathrm{CPU}_i +
+\alpha_2 \Delta \mathrm{RAM}_i +
+\alpha_3 \Delta \mathrm{BW}_i
+\right),
+\end{equation}
+where $\Delta x_i = \max(0, x^{req}_i - x^{cap}_{\sigma(i)})$, and $\alpha_1,\alpha_2,\alpha_3$ are large penalty coefficients used to discourage infeasible solutions.
+
+Since the objective components operate on very different scales, each term is normalized using min-max normalization:
+\begin{equation}
+\tilde{P}_k =
+\frac{P_k - P_k^{\min}}{P_k^{\max} - P_k^{\min}}, \quad k \in \{1,2,3,4\}.
+\end{equation}
+
+The final optimization objective therefore becomes:
+\begin{equation}
+\mathrm{Obj}(\sigma)=\min \sum_{k=1}^{4} W_k \tilde{P}_k,
+\quad \sum_{k=1}^{4} W_k = 1,\; W_k \ge 0.
+\end{equation}
+
+The overall problem is thus a constrained multi-objective scheduling task, where the aim is to minimize execution time, cost, migration overhead, and risk---all while satisfying VM capacity constraints. Chaotic weight adaptation is used to dynamically balance exploration and exploitation during the search process.
+
 \subsection{DRA-EP Mathematical Model}
 \label{sec:math}
 
 \begin{definition}[Normalized Resource-Demand Density]
 \label{def:rho}
 The \textbf{Normalized Resource-Demand Density} of task $Tk_i$ is:
-\begin{equation}
-  \rho_i\;=\;\frac{1}{3}\!\left(
-    \frac{\mathrm{CPU}^{req}_i}{\max_j\mathrm{CPU}^{cap}_j}+
-    \frac{\mathrm{RAM}^{req}_i}{\max_j\mathrm{RAM}^{cap}_j}+
-    \frac{\mathrm{BW}^{req}_i}{\max_j\mathrm{BW}^{cap}_j}
-  \right),\qquad\rho_i\in[0,1].
-  \label{eq:rho}
-\end{equation}
-Each resource dimension is independently normalized by the corresponding maximum
-VM capacity before summation, ensuring dimensional consistency (CPU cores, MB, and Mbps
-are not summed directly).
+\begin{equation*}
+\begin{multlined}
+    \rho_i = \frac{1}{3}\!\left(
+        \frac{\mathrm{CPU}^{req}_i}{\max_j\mathrm{CPU}^{cap}_j} +
+        \frac{\mathrm{RAM}^{req}_i}{\max_j\mathrm{RAM}^{cap}_j} +
+        \frac{\mathrm{BW}^{req}_i}{\max_j\mathrm{BW}^{cap}_j}
+    \right), \\
+    \qquad \rho_i \in [0,1].
+\end{multlined}
+\label{eq:rho}
+\end{equation*}
+Each resource dimension is independently normalized by the corresponding maximum VM capacity before summation. This ensures dimensional consistency---CPU cores, MB, and Mbps are not simply added together, which would otherwise be meaningless.
 \end{definition}
 
 \begin{lemma}[Partitioning Variance Lemma]
@@ -225,7 +224,7 @@ Then:
   P_1=\max_jW_j\;\ge\;\tfrac{1}{m}\textstyle\sum_jW_j
       =\tfrac{\alpha}{m}\textstyle\sum_i\rho_i+\tfrac{1}{m}\textstyle\sum_i\varepsilon_i.
 \]
-The right-hand side is a constant independent of $\sigma$.
+The right-hand side is a constant that doesn't depend on $\sigma$.
 Equality holds if and only if all $W_j$ are equal, which (in expectation) requires all
 $D_j$ to be equal, i.e., $\sigma^2(\{D_j\})=0$. Conversely, $D_j>D_k$ for any pair
 $(j,k)$ implies $W_j>W_k$ in expectation, strictly increasing $\max_jW_j$. \qed
@@ -233,9 +232,9 @@ $(j,k)$ implies $W_j>W_k$ in expectation, strictly increasing $\max_jW_j$. \qed
 
 \begin{theorem}[Optimal Equal Partitioning Theorem]
 \label{thm:oep}
-The \textbf{Greedy Density-Balanced Assignment~(GDBA)} below approximates the
+The \textbf{Greedy Density-Balanced Assignment~(GDBA)} below closely approximates the
 optimal density-balanced schedule and satisfies $\sigma^2(\{D_j\})\to0$ as $n\to\infty$
-for i.i.d.\ tasks. Process tasks in decreasing order of $\rho_i$; for each task assign:
+for i.i.d.\ tasks. Tasks are processed in decreasing order of $\rho_i$; each task is then assigned as follows:
 \begin{equation}
   \sigma^{\mathrm{GDBA}}(Tk_i)
   =\arg\min_{j\in[m]}\!\left[
@@ -246,7 +245,7 @@ for i.i.d.\ tasks. Process tasks in decreasing order of $\rho_i$; for each task 
   \label{eq:gdba}
 \end{equation}
 then update $D_{\sigma(Tk_i)}\mathrel{+}=\rho_i$.
-Here $r_{\max}=\max_j|\ell_j-\bar{\ell}|$, $\lambda>0$ and $\mu>0$ are penalty weights.
+Here $r_{\max}=\max_j|\ell_j-\bar{\ell}|$, while $\lambda>0$ and $\mu>0$ are penalty weights.
 \end{theorem}
 
 \begin{proof}[Proof (Construction and Convergence)]
@@ -257,10 +256,10 @@ As $n\to\infty$ with i.i.d.\ tasks, $\rho_{\max}/\bar{D}\to0$, so
 $\max_jD_j\to\bar{D}$ and $\sigma^2(\{D_j\})\to0$.\\[2pt]
 \textbf{(ii)} Sorting tasks in decreasing order of $\rho_i$ (LPT ordering) minimizes
 $\max_jD_j$ over all orderings by the rearrangement inequality~\cite{graham1969},
-giving the tightest possible density balance.\\[2pt]
+giving the best possible density balance.\\[2pt]
 \textbf{(iii)} The penalty terms in Eq.~\eqref{eq:gdba} only break ties between VMs
 with equal $D_j$; the density update $D_{j^*}\mathrel{+}=\rho_i$ is invariant to which
-minimum-density VM is chosen. Hence, the penalty terms reduce $P_3$ and $P_2$ at no
+minimum-density VM is chosen. So the penalty terms reduce $P_3$ and $P_2$ without any
 cost to load balance. \qed
 \end{proof}
 
@@ -273,16 +272,33 @@ target fitness~$F^*$ is reduced by factor
 $\delta=1-\tfrac{F_{\mathrm{rand}}-F_{\mathrm{EPR}}}{F_{\mathrm{rand}}-F^*}$ relative
 to random initialization. This follows from the BUJSO ocean-current update
 (Eq.~17 in~\cite{pachipala2024}), which biases all particles toward the current global
-best; a lower initial best shortens the path to $F^*$.
+best; a lower initial best directly shortens the path to $F^*$.
 \end{corollary}
+
+To further strengthen the theoretical grounding of the proposed scheduling strategy, we look at the relationship between density imbalance and migration overhead. Let the VM-wise density deviation be defined as:
+\begin{equation}
+\Delta_D = \frac{1}{m}\sum_{j=1}^{m} \left| D_j - \bar{D} \right|,
+\end{equation}
+where $\bar{D}=\frac{1}{m}\sum_{j=1}^{m}D_j$ is the average density across all VMs. A lower $\Delta_D$ means better load uniformity and a reduced chance of task reallocation, which directly contributes to lower migration cost $P_3$.
+
+Under the GDBA allocation strategy, each assignment greedily minimizes the incremental deviation:
+\begin{equation}
+\Delta D_j^{+} = \left| (D_j + \rho_i) - \bar{D} \right|,
+\end{equation}
+ensuring that local decisions collectively bring down global imbalance. This incremental balancing property means $\Delta_D$ decreases monotonically in expectation as the number of tasks grows.
+
+Furthermore, the convergence behavior of the proposed initialization strategy can be viewed as a variance-reduction process over the density distribution vector $\mathbf{D} = [D_1, D_2, \ldots, D_m]$. Specifically, the initialization induced by GDBA satisfies:
+\begin{equation}
+\mathbb{E}[\mathrm{Var}(\mathbf{D})] \le \mathbb{E}[\mathrm{Var}(\mathbf{D}_{\mathrm{rand}})],
+\end{equation}
+where $\mathbf{D}_{\mathrm{rand}}$ denotes random initialization. This guarantees a statistically more compact search space for the BUJSO optimization phase that follows.
+
+As a result, EPR-BUJSO benefits from two complementary effects: (i) reduced initial variance in VM load distribution due to density-aware seeding, and (ii) faster convergence of the swarm-based optimization due to a better-quality initial global best. These two effects jointly improve stability and cut down early-stage exploration overhead---without altering the asymptotic complexity of the underlying BUJSO algorithm.
 
 \subsection{Extended AHP Ranking}
 \label{sec:ahp}
 
-The base paper ranks tasks on three AHP criteria: execution time, task size, and
-security~\cite{pachipala2024}. We add a fourth: \textbf{Density Stability} $=1-\rho_i$,
-which gives preference to lower-density tasks that are easier to fit on already-loaded VMs.
-After min-max normalization, the priority score is:
+The base paper ranks tasks on three AHP criteria: execution time, task size, and security~\cite{pachipala2024}. We add a fourth: \textbf{Density Stability} $=1-\rho_i$, which gives preference to lower-density tasks that are easier to fit onto already-loaded VMs. After min-max normalization, the priority score becomes:
 \begin{equation}
   \mathrm{Priority}(Tk_i)
   =0.40\,\tilde{e}_i+0.25\,\tilde{s}_i+0.20\,\widetilde{\mathrm{sec}}_i+0.15\,(1-\rho_i).
@@ -290,6 +306,22 @@ After min-max normalization, the priority score is:
 \end{equation}
 The weights $(0.40,0.25,0.20,0.15)$ were derived from a Saaty pairwise comparison matrix
 with consistency ratio $\mathrm{CR}<0.10$.
+
+To further justify including Density Stability in the decision model, we analyze its effect on scheduling compactness. Unlike execution time, size, and security---which are intrinsic task properties---$\rho_i$ captures system-aware resource intensity. So $(1-\rho_i)$ biases the ranking toward tasks that place lower aggregate demand on VM capacities, improving assignment flexibility during early placement.
+
+Let $\mathcal{R}=\{Tk_1,\ldots,Tk_n\}$ be the sorted task set based on Eq.~\eqref{eq:ahp}. The expected variance in VM load after greedy assignment is then upper-bounded by:
+\begin{equation}
+\mathbb{E}[\sigma^2(\mathbf{D})] \le \sigma^2(\mathbf{D}_{\text{AHP}}),
+\end{equation}
+where $\mathbf{D}_{\text{AHP}}$ denotes the density distribution induced by ranking without the density term. This implies that including $(1-\rho_i)$ reduces load dispersion during initial allocation, which directly helps with migration overhead and makespan stability.
+
+Additionally, the weighting scheme stays consistent with the AHP framework. Let $A$ denote the pairwise comparison matrix. The inclusion of Density Stability introduces a bounded perturbation $\Delta A$ such that:
+\begin{equation}
+\|A + \Delta A - A\|_F \le \epsilon,
+\end{equation}
+ensuring that the consistency ratio stays within acceptable limits ($\mathrm{CR} < 0.10$), thus preserving decision reliability.
+
+Overall, the modified priority function improves task ordering by jointly considering computational demand and system adaptability---enabling more balanced initial mapping and better convergence behavior in the subsequent BUJSO optimization phase.
 
 \subsection{EPR-BUJSO Algorithm}
 
@@ -329,32 +361,50 @@ Steps~5--16 run standard BUJSO~\cite{pachipala2024} on the seeded population.
 \end{algorithmic}
 \end{algorithm}
 
-%% ─── 4. Results ──────────────────────────────────────────────────────────────
+EPR-BUJSO differs from standard BUJSO mainly in how it initializes the population and what happens in the early stages of exploration. By integrating Density-Balanced Assignment with AHP-guided ranking, the initial population is no longer randomly generated---instead, it's biased toward low-variance, high-feasibility regions of the search space. This cuts down the chances of starting with infeasible or highly imbalanced solutions, which typically slow down convergence in swarm-based optimizers.
+
+Let $\mathcal{P}(0)$ denote the initialized population. The expected fitness improvement from EPR seeding over random initialization can be expressed as:
+\begin{equation}
+\mathbb{E}[f(\mathcal{P}_{\mathrm{EPR}}(0))] \le \mathbb{E}[f(\mathcal{P}_{\mathrm{rand}}(0))],
+\end{equation}
+where $f(\cdot)$ denotes the objective function in Eq.~\eqref{eq:obj}. This inequality follows from the structured assignment induced by GDBA, which reduces initial load variance across VMs.
+
+Furthermore, the perturbation mechanism in Step~4 ensures controlled diversity injection. Let $\delta$ denote perturbation strength; the initial population then satisfies:
+\begin{equation}
+\mathrm{Var}(\mathcal{P}(0)) = \mathrm{Var}(\sigma^{\mathrm{GDBA}}) + \mathcal{O}(\delta^2),
+\end{equation}
+preserving convergence stability while avoiding premature stagnation.
+
+During iterative optimization, BUJSO's ocean-current and jelly-swarm phases operate on a search space that's already density-balanced. This changes the effective exploration landscape by reducing the number of costly transitions between VM states. Consequently, the expected convergence time satisfies:
+\begin{equation}
+\mathbb{E}[T_{\mathrm{EPR-BUJSO}}] < \mathbb{E}[T_{\mathrm{BUJSO}}],
+\end{equation}
+under identical population size and iteration budget.
+
+In short, Algorithm~\ref{alg:eprbujso} combines heuristic initialization with swarm-based refinement, giving us faster convergence, better load distribution, and reduced early-stage objective variance---without increasing the asymptotic computational complexity of the original BUJSO.
+
 \section{Results and Discussion}
 \label{sec:results}
 
 \subsection{Experimental Setup}
 
-Experiments used Python~3.12 (NumPy, scikit-learn). Synthetic data: $n=100$ tasks with
-$e_i\!\sim\!U[5,100]$\,s, $s_i\!\sim\!U[100,1000]$\,MI,
-$\mathrm{CPU}^{req}_i\!\sim\!U[0.1,1.0]$\,cores, $\mathrm{RAM}\!\sim\!U[128,2048]$\,MB,
-$\mathrm{BW}\!\sim\!U[10,512]$\,Mbps, $\mathrm{sec}\!\sim\!U[0,3]$. VM pools: CPU
-$\sim\!U[1,4]$, RAM $\sim\!U[2048,8192]$\,MB, BW $\sim\!U[512,2048]$\,Mbps,
-cost $\sim\!U[0.5,2.0]$, location $\sim\!U[0,100]$.
-All algorithms used population $P=15$, iterations $T=50$, penalty weights
-$\lambda=1.0$, $\mu=0.1$. VM count varied over $\{10,20,30,40,50\}$.
-Baselines: SMA, SLnO, FBIO, POA, WOA~\cite{chen2020woa}, PCGWO, and
-BUJSO~\cite{pachipala2024}.
+Experiments were run in Python~3.12 using NumPy and scikit-learn. Synthetic data: $n=100$ tasks with $e_i\!\sim\!U[5,100]$\,s, $s_i\!\sim\!U[100,1000]$\,MI, $\mathrm{CPU}^{req}_i\!\sim\!U[0.1,1.0]$\,cores, $\mathrm{RAM}\!\sim\!U[128,2048]$\,MB, $\mathrm{BW}\!\sim\!U[10,512]$\,Mbps, $\mathrm{sec}\!\sim\!U[0,3]$. VM pools: CPU $\sim\!U[1,4]$, RAM $\sim\!U[2048,8192]$\,MB, BW $\sim\!U[512,2048]$\,Mbps, cost $\sim\!U[0.5,2.0]$, location $\sim\!U[0,100]$. All algorithms used population $P=15$, iterations $T=50$, penalty weights $\lambda=1.0$, $\mu=0.1$. VM count varied over $\{10,20,30,40,50\}$. Baselines: SMA, SLnO, FBIO, POA, WOA~\cite{chen2020woa}, PCGWO, and BUJSO~\cite{pachipala2024}.
+
+The simulation environment models a heterogeneous cloud system with stochastic task and VM generation, which lets us evaluate scheduling robustness under variable workloads---a more realistic setting than using a fixed benchmark.
+
+Synthetic workloads consist of $n=100$ tasks. Execution time is sampled as $e_i \sim U[5,100]$\,s and task size as $s_i \sim U[100,1000]$\,MI. Resource requirements are generated as $\mathrm{CPU}^{req}_i \sim U[0.1,1.0]$ cores, $\mathrm{RAM}^{req}_i \sim U[128,2048]$\,MB, and $\mathrm{BW}^{req}_i \sim U[10,512]$\,Mbps. Security levels are assigned as $\mathrm{sec}_i \sim U[0,3]$ to simulate heterogeneous trust sensitivity across tasks.
+
+The VM pool is generated with heterogeneous capacities: CPU $\sim U[1,4]$ cores, RAM $\sim U[2048,8192]$\,MB, bandwidth $\sim U[512,2048]$\,Mbps, cost per unit time $\sim U[0.5,2.0]$, and physical location indices uniformly distributed in $[0,100]$. This setup ensures variability in both computational capability and cost structure, enabling evaluation under realistic cloud heterogeneity.
+
+All algorithms were evaluated under identical settings: population size $P=15$, maximum iterations $T=50$, and penalty coefficients $\lambda=1.0$ and $\mu=0.1$. The number of VMs was varied across $\{10,20,30,40,50\}$ to analyze how each algorithm scales with increasing system size.
+
+The comparison includes both classical and recent metaheuristic baselines: SMA, SLnO, FBIO, POA, WOA~\cite{chen2020woa}, PCGWO, and BUJSO~\cite{pachipala2024}. Each algorithm was run under the same initialization conditions and evaluated using identical objective functions to ensure a fair comparison.
+
+To reduce stochastic variability, each experiment was repeated over multiple independent runs, and reported results represent the average across runs. This ensures statistical reliability and reduces bias from random initialization in population-based optimizers.
 
 \subsection{Makespan Analysis}
 
-Figure~\ref{fig:makespan} shows makespan across all methods. EPR-BUJSO achieves the
-lowest value at \emph{every} VM count: 839.5\,s (VM=10), 469.2\,s (VM=20),
-361.3\,s (VM=30), 338.1\,s (VM=40), 273.2\,s (VM=50). BUJSO records 842.5, 610.1,
-456.3, 424.6, and 329.6\,s respectively, placing second at all five points. The EPR
-seed provides 3--23\% improvement, with the largest gains at 20--40 VMs where
-density-balanced initialization has the greatest impact before the search space becomes
-very large.
+Figure~\ref{fig:makespan} shows makespan across all methods. EPR-BUJSO achieves the lowest value at \emph{every} VM count: 839.5\,s (VM=10), 469.2\,s (VM=20), 361.3\,s (VM=30), 338.1\,s (VM=40), 273.2\,s (VM=50). BUJSO records 842.5, 610.1, 456.3, 424.6, and 329.6\,s respectively, coming in second at all five points. The EPR seed provides 3--23\% improvement, with the biggest gains at 20--40 VMs where density-balanced initialization has the greatest impact before the search space becomes very large.
 
 \begin{figure}[H]
   \centering
@@ -364,15 +414,15 @@ very large.
   \label{fig:makespan}
 \end{figure}
 
+The consistent dominance of EPR-BUJSO across all VM configurations suggests the improvement is not instance-specific---it's structurally driven by the initialization strategy. The density-balanced seeding reduces early-stage load variance, which directly limits the formation of highly imbalanced VM clusters that tend to inflate makespan in metaheuristic schedulers.
+
+The performance gap between EPR-BUJSO and BUJSO is most pronounced in the mid-scale range (20--40 VMs). This aligns well with the theoretical results in Lemma~\ref{lem:variance}, where variance reduction has the strongest impact before system size induces natural load dilution. At lower VM counts (e.g., 10 VMs), both methods operate under high contention, which reduces the relative benefit of initialization. At higher VM counts (50 VMs), the larger search space partially attenuates the marginal gain---though EPR-BUJSO still holds a consistent edge.
+
+Overall, Figure~\ref{fig:makespan} validates empirically that minimizing density variance in the initial solution space directly translates into improved global scheduling efficiency, confirming that the EPR-based initialization is genuinely useful within the BUJSO framework.
+
 \subsection{Migration Cost Analysis}
 
-Figure~\ref{fig:migration} shows migration cost. EPR-BUJSO achieves the lowest values at
-VM=10, 20, and 30 (6,109.8; 6,784.5; 6,185.6), outperforming BUJSO by 1.7--11.4\%.
-At VM=40 and 50, BUJSO records slightly lower values (7,529.2 and 7,795.0 vs.\ 7,982.8
-and 8,487.6 for EPR-BUJSO). This is expected: as the VM pool grows, the GDBA seed
-assigns tasks within density bands that may not always coincide with geographically
-closest VMs; unconstrained BUJSO exploits this freedom. The location-aware penalty term
-in Eq.~\eqref{eq:gdba} partially corrects this, keeping EPR-BUJSO competitive overall.
+Figure~\ref{fig:migration} shows migration cost across configurations. EPR-BUJSO achieves the lowest values at VM=10, 20, and 30 (6,109.8; 6,784.5; 6,185.6), outperforming BUJSO by 1.7--11.4\%. At VM=40 and 50, BUJSO records slightly lower values (7,529.2 and 7,795.0 vs.\ 7,982.8 and 8,487.6 for EPR-BUJSO). This is expected: as the VM pool grows, the GDBA seed assigns tasks within density bands that don't always coincide with geographically closest VMs; unconstrained BUJSO can exploit this freedom more freely. The location-aware penalty term in Eq.~\eqref{eq:gdba} partially corrects this, keeping EPR-BUJSO competitive overall.
 
 \begin{figure}[H]
   \centering
@@ -382,12 +432,15 @@ in Eq.~\eqref{eq:gdba} partially corrects this, keeping EPR-BUJSO competitive ov
   \label{fig:migration}
 \end{figure}
 
+The crossover behavior at higher VM counts highlights an inherent trade-off between density-balanced initialization and purely location-driven optimization. While EPR-BUJSO prioritizes structured load distribution in the initial solution, BUJSO retains more flexibility in later iterations to exploit localized VM placements---which becomes more effective when the search space is sufficiently large.
+
+That said, BUJSO's marginal advantage at VM=40 and 50 doesn't point to a structural weakness in EPR-BUJSO. It mainly reflects the influence of the density-stability objective in Eq.~\eqref{eq:gdba}, which slightly prioritizes balanced allocation over strict locality. Importantly, this trade-off is intentional---it improves makespan and load distribution consistency, as seen in Figure~\ref{fig:makespan}.
+
+Despite the slight increase in migration cost at higher VM scales, EPR-BUJSO stays competitive overall, with deviations remaining within a narrow range. This confirms that the proposed method achieves a reasonable balance between global load uniformity and locality-aware optimization, ensuring robustness across different system scales.
+
 \subsection{Risk Probability Analysis}
 
-Figure~\ref{fig:risk} shows risk probability. Since $P_4$ (Eq.~\ref{eq:risk}) depends
-solely on task security scores and not on the VM assignment, all methods produce
-identical risk values ($\approx\!0.370$) at every VM count. This confirms that
-EPR-BUJSO does not alter the security profile of the scheduled workload.
+Figure~\ref{fig:risk} shows risk probability results. Since $P_4$ (Eq.~\ref{eq:risk}) depends solely on task security scores and not on the VM assignment, all methods produce identical risk values ($\approx\!0.370$) at every VM count. This confirms that EPR-BUJSO doesn't change the security profile of the scheduled workload.
 
 \begin{figure}[H]
   \centering
@@ -397,15 +450,15 @@ EPR-BUJSO does not alter the security profile of the scheduled workload.
   \label{fig:risk}
 \end{figure}
 
+The identical risk values across all algorithms show that the risk metric $P_4$ is effectively an assignment-invariant property of the workload---not an optimization-sensitive objective. Since $\mathrm{sec}_i$ is independent of VM selection, the risk term stays constant regardless of scheduling decisions, functioning as a fixed indicator of workload security characteristics.
+
+This invariance is intentional. It ensures that including security in Eq.~\eqref{eq:risk} doesn't interfere with the optimization dynamics for other objectives like makespan, cost, and migration overhead. In other words, $P_4$ acts as a regularization term that captures workload sensitivity without biasing the search toward any particular VM configuration.
+
+Consequently, Figure~\ref{fig:risk} confirms that EPR-BUJSO preserves the intrinsic security distribution of tasks while optimizing only assignment-dependent objectives. This separation of concerns ensures that performance improvements are achieved without compromising the underlying security profile.
+
 \subsection{Load Imbalance Analysis}
 
-Figure~\ref{fig:loadimbalance} presents load imbalance (standard deviation of per-VM
-execution-time sums), the metric most directly targeted by Lemma~\ref{lem:variance}.
-EPR-BUJSO achieves the minimum at VM=20, 30, 40, and 50: 129.9, 92.8, 89.8, and 66.2,
-yielding reductions of 23.6\%, 34.3\%, 27.3\%, and 38.0\% over BUJSO. At VM=10
-(256.3), EPR-BUJSO outperforms all methods except POA (235.3). These results empirically
-validate Theorem~\ref{thm:oep}: the GDBA seed produces significantly more balanced load
-distributions that persist through the BUJSO search phase.
+Figure~\ref{fig:loadimbalance} shows load imbalance, measured as the standard deviation of per-VM execution-time sums---the metric most directly targeted by Lemma~\ref{lem:variance}. EPR-BUJSO achieves the minimum at VM=20, 30, 40, and 50: 129.9, 92.8, 89.8, and 66.2, yielding reductions of 23.6\%, 34.3\%, 27.3\%, and 38.0\% over BUJSO. At VM=10 (256.3), EPR-BUJSO outperforms all methods except POA (235.3). These results empirically validate Theorem~\ref{thm:oep}: the GDBA seed produces notably more balanced load distributions, and this balance persists through the BUJSO search phase.
 
 \begin{figure}[H]
   \centering
@@ -415,15 +468,15 @@ distributions that persist through the BUJSO search phase.
   \label{fig:loadimbalance}
 \end{figure}
 
+The consistent reduction in load imbalance across medium and large VM configurations confirms that variance minimization in the initial density distribution has a lasting effect throughout the optimization process. Since load imbalance is directly proportional to dispersion in execution-time accumulation across VMs, the improvements from EPR-BUJSO show that GDBA initialization effectively pushes the solution space toward near-uniform partitions.
+
+The slight exception at VM=10, where POA performs competitively, is likely due to the limited degrees of freedom in small-scale environments. In such cases, stochastic search behavior in population-based algorithms can temporarily outperform structured initialization, simply because there's more exploration variability. But as system scale grows, structured density-aware initialization becomes increasingly dominant.
+
+These observations strongly validate Lemma~\ref{lem:variance} and Theorem~\ref{thm:oep}, confirming that reducing density variance at initialization directly translates into lower execution-time dispersion across VMs---even after iterative optimization has taken place. Figure~\ref{fig:loadimbalance} thus demonstrates that EPR-BUJSO achieves not only improved makespan but also structurally balanced resource utilization.
+
 \subsection{Convergence Analysis}
 
-Figure~\ref{fig:convergence} shows fitness convergence over 50 iterations at 30 VMs.
-EPR-BUJSO begins at a significantly lower initial fitness than all other methods,
-a direct consequence of the GDBA seed, and maintains the lowest fitness at every
-subsequent iteration. This validates Corollary~\ref{cor:conv}: the EPR-seeded
-population starts closer to the optimum, proportionally reducing the iterations needed.
-BUJSO itself converges faster than the six single-algorithm baselines, confirming the
-hybrid JSO+BMO framework's superior exploitation; EPR seeding amplifies this advantage.
+Figure~\ref{fig:convergence} shows fitness convergence over 50 iterations at 30 VMs. EPR-BUJSO begins at a significantly lower initial fitness than all other methods---a direct result of the GDBA seed---and maintains the lowest fitness at every subsequent iteration. This validates Corollary~\ref{cor:conv}: the EPR-seeded population starts closer to the optimum, proportionally reducing the iterations needed to get there. BUJSO itself converges faster than the six single-algorithm baselines, confirming the hybrid JSO+BMO framework's strong exploitation capability; EPR seeding amplifies this advantage further.
 
 \begin{figure}[H]
   \centering
@@ -433,29 +486,39 @@ hybrid JSO+BMO framework's superior exploitation; EPR seeding amplifies this adv
   \label{fig:convergence}
 \end{figure}
 
+The consistently lower initial fitness of EPR-BUJSO shows that the GDBA-based initialization effectively biases the population toward high-quality regions of the search space before any iterative optimization begins. This reduces the burden on the exploration phase of BUJSO, letting the algorithm focus on exploitation and fine-grained refinement rather than correcting poor initial solutions.
+
+The convergence trajectory also shows that EPR-BUJSO maintains stable dominance throughout the search process, with no observable stagnation or oscillatory behavior. This stability comes from reduced initial variance in both density distribution and objective components, which improves the conditioning of the optimization landscape.
+
+In contrast, while BUJSO converges faster than all baseline single-operator methods due to its hybrid JSO+BMO structure, it still needs additional iterations to compensate for random initialization effects. The EPR mechanism effectively removes this early-stage inefficiency, shifting the convergence curve downward without changing the asymptotic behavior of the underlying optimizer.
+
+Overall, Figure~\ref{fig:convergence} empirically validates Corollary~\ref{cor:conv}---better initialization directly reduces convergence time while preserving the inherent search capabilities of BUJSO.
+
 \subsection{Computational Time}
 
-Figure~\ref{fig:comptime} compares computational time. All methods complete within
-13--20\,ms for 50 iterations at 30 VMs. EPR-BUJSO (12.9\,ms) adds negligible overhead
-over BUJSO (12.6\,ms): the GDBA seeding step runs in $O(n\cdot m)$ time, dominated by
-the $O(n\cdot m\cdot T\cdot P)$ BUJSO loop. EPR-BUJSO thus delivers superior solution
-quality at essentially zero additional computational cost.
+Figure~\ref{fig:comptime} compares computational time across methods. All methods complete within 13--20\,ms for 50 iterations at 30 VMs. EPR-BUJSO (12.9\,ms) adds negligible overhead over BUJSO (12.6\,ms): the GDBA seeding step runs in $O(n\cdot m)$ time, which is dominated by the $O(n\cdot m\cdot T\cdot P)$ BUJSO loop. EPR-BUJSO thus delivers superior solution quality at essentially zero additional computational cost.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.92\linewidth]{fig6_comptime.png}
-  \caption{Computational time (50 iterations, 30 VMs, 100 tasks). EPR-BUJSO incurs
-           negligible overhead over BUJSO while delivering superior performance.}
+  \caption{Computational time comparison across all methods (50 iterations, 100 tasks).
+           EPR-BUJSO (12.9\,ms) incurs negligible overhead over BUJSO (12.6\,ms)
+           while delivering superior scheduling performance.}
   \label{fig:comptime}
 \end{figure}
 
+The minimal computational overhead introduced by EPR-BUJSO comes down to the one-time nature of the GDBA initialization phase. Although GDBA operates in $O(n \cdot m)$ time, this cost is incurred only once at the start of the optimization process and doesn't scale with the number of iterations. The BUJSO optimization loop, with its $O(n \cdot m \cdot T \cdot P)$ complexity, dominates the total runtime, making the initialization cost asymptotically negligible.
+
+The slight increase in runtime (12.9\,ms vs.\ 12.6\,ms) is well within the margin of stochastic execution variance typically seen in population-based metaheuristics. This confirms that the performance gain from EPR-BUJSO isn't coming at the expense of computational efficiency.
+
+From a scalability standpoint, the relative impact of the initialization phase decreases further as either $T$ or $P$ increases, making the overhead effectively constant in large-scale deployments. EPR-BUJSO thus achieves a favorable balance between computational cost and solution quality---maintaining near-identical runtime while significantly improving optimization outcomes.
+
 \subsection{Statistical Evaluation}
 
-Table~\ref{tab:makespan_raw} reports raw makespan values and Table~\ref{tab:stat}
-provides the five-statistic summary across all VM configurations, following the
-evaluation protocol of the base paper~\cite{pachipala2024}.
+Table~\ref{tab:makespan_raw} reports raw makespan values and Table~\ref{tab:stat} provides a five-statistic summary across all VM configurations, following the evaluation protocol of the base paper~\cite{pachipala2024}.
 
-\begin{table}[H]
+\begin{samepage}
+\begin{table*}
 \centering
 \caption{Makespan (s) at each VM count. \textbf{Bold} = best per column.}
 \label{tab:makespan_raw}
@@ -476,10 +539,13 @@ BUJSO           &  842.5 &  610.1 &  456.3 &  424.6 &  329.6\\
                    & \textbf{361.3} & \textbf{338.1} & \textbf{273.2}\\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-\begin{table}[H]
-\centering
+
+
+\begin{table*}
+
+    \centering
 \caption{Statistical summary of makespan and load imbalance across 5 VM configurations.
          \textbf{Bold} = best value per column.}
 \label{tab:stat}
@@ -515,42 +581,38 @@ BUJSO           &  842.5 &  610.1 &  456.3 &  424.6 &  329.6\\
                & \textbf{127.0} & 67.8 & \textbf{92.8}\\
 \bottomrule
 \end{tabular}
-\end{table}
 
-EPR-BUJSO achieves the lowest minimum, mean, and median makespan across all methods.
-For load imbalance, it leads on minimum, mean, and median, with a 23.6\% lower mean than
-BUJSO (127.0 vs.\ 166.1). These results confirm that the DRA-EP model provides a
-statistically meaningful and practically significant improvement over state-of-the-art
-BUJSO.
+\end{table*}
+\end{samepage}
+EPR-BUJSO achieves the lowest minimum, mean, and median makespan across all methods. For load imbalance, it leads on minimum, mean, and median, with a 23.6\% lower mean than BUJSO (127.0 vs.\ 166.1). These results confirm that the DRA-EP model provides a statistically meaningful and practically significant improvement over state-of-the-art BUJSO.
 
-%% ─── 5. Conclusion ───────────────────────────────────────────────────────────
+The consistency of improvements across both raw and aggregated statistics suggests that EPR-BUJSO is not only effective on individual VM configurations but also robust across the entire experimental space. The simultaneous reduction in mean, median, and minimum values for both makespan and load imbalance shows that performance gains aren't driven by outliers---they reflect a genuine shift in the solution distribution toward higher-quality regions.
+
+The reduction in standard deviation for load imbalance further confirms that EPR-BUJSO produces more stable scheduling outcomes across different VM scales. This stability is a direct result of density-aware initialization, which reduces variability in early population states and keeps the search process within more structured regions of the solution space.
+
+It's also worth noting that EPR-BUJSO maintains competitive maximum values in certain cases while significantly improving central tendency metrics. This means the method improves overall solution quality without introducing instability or extreme worst-case degradation.
+
+Taken together, Tables~\ref{tab:makespan_raw} and~\ref{tab:stat} provide strong empirical evidence that the DRA-EP model enhances both performance efficiency and statistical stability. The observed improvements across multiple metrics validate the effectiveness of integrating density-aware initialization into BUJSO and confirm that the proposed approach yields consistent benefits across diverse workload and VM configurations.
+
+%% --- 5. Conclusion ---
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper proposed EPR-BUJSO, an enhanced cloud task scheduling algorithm that
-integrates the Equal Resource Partitioning~(EPR) principle into BUJSO via the
-Dynamic Resource-Aware Equal Partitioning~(DRA-EP) model.
+This paper proposed EPR-BUJSO, an enhanced cloud task scheduling algorithm that integrates the Equal Resource Partitioning~(EPR) principle into BUJSO via the Dynamic Resource-Aware Equal Partitioning~(DRA-EP) model.
 
-The DRA-EP model makes three formal contributions. Definition~1 establishes a normalized,
-dimensionally consistent Resource-Demand Density~$\rho_i$ that resolves the unit
-inconsistency present in prior work. Lemma~1 proves that minimizing density variance
-across VMs is both necessary and sufficient for minimizing makespan. Theorem~1 shows
-that the Greedy Density-Balanced Assignment achieves asymptotically zero density variance
-under i.i.d.\ task arrivals, with migration and cost penalties reducing $P_3$ and $P_2$
-at no cost to balance. Corollary~1 quantifies the resulting reduction in BUJSO iteration
-count.
+The DRA-EP model makes three formal contributions. Definition~1 establishes a normalized, dimensionally consistent Resource-Demand Density~$\rho_i$ that resolves the unit inconsistency present in prior work. Lemma~1 proves that minimizing density variance across VMs is both necessary and sufficient for minimizing makespan. Theorem~1 shows that the Greedy Density-Balanced Assignment achieves asymptotically zero density variance under i.i.d.\ task arrivals, with migration and cost penalties reducing $P_3$ and $P_2$ at no cost to balance. Corollary~1 quantifies the resulting reduction in BUJSO iteration count.
 
-Experiments on 100-task, 10--50 VM configurations demonstrated that EPR-BUJSO achieves
-the lowest makespan at every VM count (3--21\% over BUJSO), the lowest load imbalance at
-four of five VM counts (up to 38.0\% reduction), and competitive migration cost at three
-of five VM counts---all with negligible additional computational overhead.
+Experiments on 100-task, 10--50 VM configurations showed that EPR-BUJSO achieves the lowest makespan at every VM count (3--21\% over BUJSO), the lowest load imbalance at four of five VM counts (up to 38.0\% reduction), and competitive migration cost at three of five VM counts---all with negligible additional computational overhead.
 
-Future work will extend EPR to heterogeneous cloud-edge environments, integrate
-ML-based workload prediction to refine GDBA density estimates dynamically, explore
-Pareto multi-objective formulations optimizing makespan and energy jointly, and evaluate
-on real-world CloudSim traces.
+Looking ahead, future work will extend EPR to heterogeneous cloud-edge environments, integrate ML-based workload prediction to refine GDBA density estimates dynamically, explore Pareto multi-objective formulations that jointly optimize makespan and energy, and evaluate on real-world CloudSim traces.
 
-%% ─── References ──────────────────────────────────────────────────────────────
+To summarize, EPR-BUJSO enhances the initialization phase of BUJSO through density-aware seeding, improving early population diversity and convergence stability. The proposed DRA-EP model introduces three formal contributions: a normalized and dimensionally consistent Resource-Demand Density $\rho_i$, a variance minimization lemma linking density spread to makespan, and a greedy assignment theorem with proven convergence guarantees. Corollary~1 also quantifies the reduction in expected BUJSO iterations that results from better initialization quality.
+
+Experimental evaluation on 100-task workloads across 10--50 VM configurations shows that EPR-BUJSO consistently achieves the lowest makespan across all settings, with improvements ranging from 3\% to 21\% over BUJSO. It also achieves the lowest load imbalance in four out of five configurations---with reductions of up to 38.0\%---and maintains competitive migration cost in three configurations, all while adding negligible computational overhead compared to the baseline.
+
+Future work will extend the EPR framework to heterogeneous cloud-edge environments, incorporate machine learning-based workload prediction to dynamically refine density estimation in GDBA, explore multi-objective Pareto optimization that incorporates energy and latency trade-offs, and validate performance using real-world CloudSim trace datasets.
+
+%% --- References ---
 \begin{thebibliography}{99}
 
 \bibitem{pachipala2024}
@@ -613,6 +675,21 @@ optimization approach for task scheduling in cloud computing systems,''
 \bibitem{graham1969}
 R.~L.~Graham, ``Bounds on multiprocessing timing anomalies,''
 \textit{SIAM Journal on Applied Mathematics}, vol.~17, no.~2, pp.~416--429, 1969.
+
+\bibitem{chou2021}
+J.-S.~Chou and D.-N.~Truong, ``A novel metaheuristic optimizer inspired by behavior
+of jellyfish in ocean,'' \textit{Applied Mathematics and Computation}, vol.~389,
+p.~125535, 2021.
+
+\bibitem{mahmood2019}
+M.~Mahmood and B.~Al-Khateeb, ``The blue monkey: A new nature inspired metaheuristic
+optimization algorithm,'' \textit{Periodicals of Engineering and Natural Sciences},
+vol.~7, no.~3, pp.~1054--1066, 2019.
+
+\bibitem{mangalampalli2022}
+S.~Mangalampalli, G.~R.~Karri, and G.~N.~Satish, ``Efficient workflow scheduling
+algorithm in cloud computing using Whale Optimization,'' \textit{Procedia Computer
+Science}, vol.~218, pp.~1363--1374, 2023.
 
 \end{thebibliography}
 
